@@ -187,11 +187,11 @@ fn verifyOk(id: c_uint, kind: enum { shader, program }) void {
 
 fn newCircle(rand: std.Random) Circle {
     const velocity = rand.float(f32) * 0.01;
-    const radians = rand.float(f32) * 2 * std.math.pi;
+    const angle = rand.float(f32) * 2 * std.math.pi;
     return .{
         .position = .{ 0, 0 },
         .color = .{ rand.float(f32), rand.float(f32), rand.float(f32) },
         .radius = 0.1 + 0.1 * rand.float(f32),
-        .velocity = .{ velocity * std.math.cos(radians), velocity * std.math.sin(radians) },
+        .velocity = .{ velocity * std.math.cos(angle), velocity * std.math.sin(angle) },
     };
 }
