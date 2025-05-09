@@ -1,15 +1,18 @@
 const std = @import("std");
 const builtin = @import("builtin");
+
 const gl = @import("zgl");
 const glfw = @import("zglfw");
 const zm = @import("zmath");
 
-const Circles = std.MultiArrayList(struct {
+const Circle = struct {
     position: [2]f32,
-    speed: f32,
+    velocity: [2]f32,
     radius: f32,
     color: [3]f32,
-});
+};
+
+const Circles = std.MultiArrayList(Circle);
 
 var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
 
@@ -28,14 +31,11 @@ pub fn main() !void {
     var prng = std.Random.DefaultPrng.init(0);
     const rand = prng.random();
 
+    const max_circle_count = 100_000;
     var circles = Circles.empty;
     defer circles.deinit(gpa);
-    const inital_circle_count = 1000;
-    try circles.ensureUnusedCapacity(gpa, inital_circle_count);
-    var i: usize = 0;
-    while (i < inital_circle_count) : (i += 1) {
-        circles.appendAssumeCapacity(.{ .position = .{ 2 * rand.float(f32) - 1, 2 * rand.float(f32) - 1 }, .color = randomColor(rand), .speed = 0.01, .radius = rand.float(f32) });
-    }
+    try circles.ensureTotalCapacity(gpa, max_circle_count);
+    circles.appendAssumeCapacity(newCircle(rand));
 
     try glfw.init();
     defer glfw.terminate();
@@ -83,7 +83,8 @@ pub fn main() !void {
     defer positionsVBO.delete();
 
     gl.bindBuffer(positionsVBO, .array_buffer);
-    gl.bufferData(.array_buffer, [2]f32, circles.items(.position), .dynamic_draw);
+    gl.bufferUninitialized(.array_buffer, [2]f32, max_circle_count, .dynamic_draw);
+    gl.bufferSubData(.array_buffer, 0, [2]f32, circles.items(.position));
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, .float, false, 2 * @sizeOf(f32), 0);
     gl.vertexAttribDivisor(0, 1);
@@ -92,7 +93,8 @@ pub fn main() !void {
     defer radiusVBO.delete();
 
     gl.bindBuffer(radiusVBO, .array_buffer);
-    gl.bufferData(.array_buffer, f32, circles.items(.radius), .static_draw);
+    gl.bufferUninitialized(.array_buffer, f32, max_circle_count, .dynamic_draw);
+    gl.bufferSubData(.array_buffer, 0, f32, circles.items(.radius));
     gl.enableVertexAttribArray(1);
     gl.vertexAttribPointer(1, 1, .float, false, @sizeOf(f32), 0);
     gl.vertexAttribDivisor(1, 1);
@@ -101,7 +103,8 @@ pub fn main() !void {
     defer colorVBO.delete();
 
     gl.bindBuffer(colorVBO, .array_buffer);
-    gl.bufferData(.array_buffer, [3]f32, circles.items(.color), .static_draw);
+    gl.bufferUninitialized(.array_buffer, [3]f32, max_circle_count, .dynamic_draw);
+    gl.bufferSubData(.array_buffer, 0, [3]f32, circles.items(.color));
     gl.enableVertexAttribArray(2);
     gl.vertexAttribPointer(2, 3, .float, false, 3 * @sizeOf(f32), 0);
     gl.vertexAttribDivisor(2, 1);
@@ -111,6 +114,45 @@ pub fn main() !void {
         if (window.getKey(.escape) == .press) {
             window.setShouldClose(true);
         }
+
+        // Update physics
+        for (circles.items(.position), circles.items(.velocity)) |*position, velocity| {
+            position[0] += velocity[0];
+            position[1] += velocity[1];
+        }
+        var new_count: usize = 0;
+        for (circles.items(.position), 0..) |position, i| {
+            const clip_distance = 1;
+            if (position[0] * position[0] + position[1] * position[1] > clip_distance * clip_distance) {
+                new_count += 1;
+                circles.set(i, newCircle(rand));
+            }
+        }
+        const previous_length = circles.len;
+        if (previous_length + new_count > max_circle_count) return error.TooManyCircles;
+        var i: usize = 0;
+        while (i < new_count) : (i += 1) {
+            circles.appendAssumeCapacity(newCircle(rand));
+        }
+        // Write new positions
+        gl.bindBuffer(positionsVBO, .array_buffer);
+        gl.bufferSubData(.array_buffer, 0, [2]f32, circles.items(.position));
+
+        // TODO: The following two buffers shouldn't be completely overwritten every frame but only paritly, see the below implementation attempt - that doesn't work :/
+        gl.bindBuffer(colorVBO, .array_buffer);
+        gl.bufferSubData(.array_buffer, 0, [3]f32, circles.items(.color));
+
+        gl.bindBuffer(radiusVBO, .array_buffer);
+        gl.bufferSubData(.array_buffer, 0, f32, circles.items(.radius));
+
+        // Static updates
+        // if (new_count > 0) {
+        //     std.debug.print("Creating new circles{}\n", .{new_count});
+        //     gl.bindBuffer(colorVBO, .array_buffer);
+        //     gl.bufferSubData(.array_buffer, previous_length, [3]f32, circles.items(.color)[previous_length..]);
+        //     gl.bindBuffer(radiusVBO, .array_buffer);
+        //     gl.bufferSubData(.array_buffer, previous_length, f32, circles.items(.radius)[previous_length..]);
+        // }
 
         gl.clearColor(0.2, 0.3, 0.3, 1.0);
         gl.clear(.{ .color = true });
@@ -138,6 +180,11 @@ fn verifyOk(id: c_uint, kind: enum { shader, program }) void {
     }
 }
 
-fn randomColor(rand: std.Random) [3]f32 {
-    return .{ rand.float(f32), rand.float(f32), rand.float(f32) };
+fn newCircle(rand: std.Random) Circle {
+    return .{
+        .position = .{ 0, 0 },
+        .color = .{ rand.float(f32), rand.float(f32), rand.float(f32) },
+        .radius = 0.1 + 0.1 * rand.float(f32),
+        .velocity = .{ (2 * rand.float(f32) - 1) * 0.01, (2 * rand.float(f32) - 1) * 0.01 },
+    };
 }
