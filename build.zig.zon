@@ -16,6 +16,10 @@
             .url = "git+https://github.com/zig-gamedev/zglfw#4a5ec6186173a6ae4d71ad01b64dac5561ef0b16",
             .hash = "1220fb278bcd5f1be0096c841c29de2374806f3980160aa3e409f551b1c242254b74",
         },
+        .ztracy = .{
+            .url = "git+https://github.com/zig-gamedev/ztracy#be3d003f29d59d72e68e493ab531374ab474a795",
+            .hash = "ztracy-0.14.0-dev-zHJSq1oQFwCAq2LhbqsBUmZAipMzsD8UfKL5Etc_OJMb",
+        },
     },
 
     .paths = .{

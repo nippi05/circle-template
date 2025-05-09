@@ -4,6 +4,7 @@ const builtin = @import("builtin");
 const gl = @import("zgl");
 const glfw = @import("zglfw");
 const zm = @import("zmath");
+const ztracy = @import("ztracy");
 
 const Circle = struct {
     position: [2]f32,
@@ -110,12 +111,19 @@ pub fn main() !void {
     gl.vertexAttribDivisor(2, 1);
 
     while (!window.shouldClose()) {
+        const frame_zone = ztracy.ZoneN(@src(), "frame");
+        defer frame_zone.End();
+
+        const poll_events_zone = ztracy.ZoneN(@src(), "poll_events");
         glfw.pollEvents();
+
         if (window.getKey(.escape) == .press) {
             window.setShouldClose(true);
         }
+        poll_events_zone.End();
 
         // Update physics
+        const physics_zone = ztracy.ZoneN(@src(), "physics");
         for (circles.items(.position), circles.items(.velocity)) |*position, velocity| {
             position[0] += velocity[0];
             position[1] += velocity[1];
@@ -134,7 +142,9 @@ pub fn main() !void {
         while (i < new_count) : (i += 1) {
             circles.appendAssumeCapacity(newCircle(rand));
         }
+        physics_zone.End();
         // Write new positions
+        const buffer_writing_zone = ztracy.ZoneN(@src(), "buffer_writing");
         gl.bindBuffer(positionsVBO, .array_buffer);
         gl.bufferSubData(.array_buffer, 0, [2]f32, circles.items(.position));
 
@@ -145,6 +155,7 @@ pub fn main() !void {
         gl.bindBuffer(radiusVBO, .array_buffer);
         gl.bufferSubData(.array_buffer, 0, f32, circles.items(.radius));
 
+        buffer_writing_zone.End();
         // Static updates
         // if (new_count > 0) {
         //     std.debug.print("Creating new circles{}\n", .{new_count});
@@ -154,6 +165,8 @@ pub fn main() !void {
         //     gl.bufferSubData(.array_buffer, previous_length, f32, circles.items(.radius)[previous_length..]);
         // }
 
+        const drawing_zone = ztracy.ZoneN(@src(), "drawing");
+        defer drawing_zone.End();
         gl.clearColor(0.2, 0.3, 0.3, 1.0);
         gl.clear(.{ .color = true });
 
