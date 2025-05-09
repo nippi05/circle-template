@@ -148,22 +148,14 @@ pub fn main() !void {
         gl.bindBuffer(positionsVBO, .array_buffer);
         gl.bufferSubData(.array_buffer, 0, [2]f32, circles.items(.position));
 
-        // TODO: The following two buffers shouldn't be completely overwritten every frame but only paritly, see the below implementation attempt - that doesn't work :/
-        gl.bindBuffer(colorVBO, .array_buffer);
-        gl.bufferSubData(.array_buffer, 0, [3]f32, circles.items(.color));
-
-        gl.bindBuffer(radiusVBO, .array_buffer);
-        gl.bufferSubData(.array_buffer, 0, f32, circles.items(.radius));
-
+        // Partial updates
+        if (new_count > 0) {
+            gl.bindBuffer(colorVBO, .array_buffer);
+            gl.bufferSubData(.array_buffer, 3 * previous_length * @sizeOf(f32) , [3]f32, circles.items(.color)[previous_length..]);
+            gl.bindBuffer(radiusVBO, .array_buffer);
+            gl.bufferSubData(.array_buffer, previous_length * @sizeOf(f32) , f32, circles.items(.radius)[previous_length..]);
+        }
         buffer_writing_zone.End();
-        // Static updates
-        // if (new_count > 0) {
-        //     std.debug.print("Creating new circles{}\n", .{new_count});
-        //     gl.bindBuffer(colorVBO, .array_buffer);
-        //     gl.bufferSubData(.array_buffer, previous_length, [3]f32, circles.items(.color)[previous_length..]);
-        //     gl.bindBuffer(radiusVBO, .array_buffer);
-        //     gl.bufferSubData(.array_buffer, previous_length, f32, circles.items(.radius)[previous_length..]);
-        // }
 
         const drawing_zone = ztracy.ZoneN(@src(), "drawing");
         defer drawing_zone.End();
