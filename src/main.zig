@@ -151,9 +151,9 @@ pub fn main() !void {
         // Partial updates
         if (new_count > 0) {
             gl.bindBuffer(colorVBO, .array_buffer);
-            gl.bufferSubData(.array_buffer, 3 * previous_length * @sizeOf(f32) , [3]f32, circles.items(.color)[previous_length..]);
+            gl.bufferSubData(.array_buffer, 3 * previous_length * @sizeOf(f32), [3]f32, circles.items(.color)[previous_length..]);
             gl.bindBuffer(radiusVBO, .array_buffer);
-            gl.bufferSubData(.array_buffer, previous_length * @sizeOf(f32) , f32, circles.items(.radius)[previous_length..]);
+            gl.bufferSubData(.array_buffer, previous_length * @sizeOf(f32), f32, circles.items(.radius)[previous_length..]);
         }
         buffer_writing_zone.End();
 
@@ -186,10 +186,12 @@ fn verifyOk(id: c_uint, kind: enum { shader, program }) void {
 }
 
 fn newCircle(rand: std.Random) Circle {
+    const velocity = rand.float(f32) * 0.01;
+    const radians = rand.float(f32) * 2 * std.math.pi;
     return .{
         .position = .{ 0, 0 },
         .color = .{ rand.float(f32), rand.float(f32), rand.float(f32) },
         .radius = 0.1 + 0.1 * rand.float(f32),
-        .velocity = .{ (2 * rand.float(f32) - 1) * 0.01, (2 * rand.float(f32) - 1) * 0.01 },
+        .velocity = .{ velocity * std.math.cos(radians), velocity * std.math.sin(radians) },
     };
 }
