@@ -1,0 +1,26 @@
+.{
+    .name = .learnopengl,
+    .version = "0.0.0",
+    .fingerprint = 0x581a22dd3c2abd28,
+
+    .dependencies = .{
+        .zmath = .{
+            .url = "git+https://github.com/zig-gamedev/zmath#c6aa077003b53aaa3929541201b83bc394ed7ddb",
+            .hash = "1220081d55b58b968d953db1afc2fb01b2f5733929144e69522461ce25fa6450d84e",
+        },
+        .zgl = .{
+            .url = "git+https://github.com/ziglibs/zgl#f170f34d1ed7a00aa6a2a00aafba40b661896010",
+            .hash = "12204115129438285a43d0a853d4d4bb86a63ab82b140189a47bc987f7b08d2252b0",
+        },
+        .zglfw = .{
+            .url = "git+https://github.com/zig-gamedev/zglfw#4a5ec6186173a6ae4d71ad01b64dac5561ef0b16",
+            .hash = "1220fb278bcd5f1be0096c841c29de2374806f3980160aa3e409f551b1c242254b74",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
